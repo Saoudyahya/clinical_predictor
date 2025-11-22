@@ -13,6 +13,10 @@ def main():
     print("SYSTÈME DE PRÉDICTION CLINIQUE")
     print("=" * 60)
 
+
+
+
+
     # 1. Charger les données
     print("\n1. Chargement des données...")
     dataset = ClinicalDataset("data/train_data.csv")
