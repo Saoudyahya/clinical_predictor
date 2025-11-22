@@ -1,6 +1,7 @@
 from core.dataset import ClinicalDataset
 from core.logistic_regression import LogisticRegression
 from core.neural_network import NeuralNetwork
+from core.decision_tree import DecisionTree
 from pipeline.trainer import Trainer
 from pipeline.evaluator import Evaluator
 from utils.processing import DataProcessor
@@ -30,6 +31,9 @@ def main():
     # Option 2: Réseau de Neurones
     # model = NeuralNetwork(hidden_layers=[64, 32], learning_rate=0.01, n_iterations=1000)
 
+    # Option 3: Arbre de Décision
+    # model = DecisionTree(max_depth=5, min_samples_split=2, criterion='gini')
+
     trainer = Trainer(model)
     trained_model = trainer.train(X_train, y_train, normalize=True)
 
@@ -51,6 +55,11 @@ def main():
 
     print(f"   Prédiction: {'Infecté' if prediction[0] == 1 else 'Sain'}")
     print(f"   Probabilité: {probability[0]:.4f}")
+
+    # 6. Afficher les infos du modèle (si c'est un Decision Tree)
+    if isinstance(model, DecisionTree):
+        print(f"\n   Profondeur de l'arbre: {model.get_tree_depth()}")
+        print(f"   Nombre de feuilles: {model.count_leaves()}")
 
     print("\n" + "=" * 60)
     print("PROCESSUS TERMINÉ AVEC SUCCÈS!")
