@@ -60,55 +60,10 @@ jobs:
       run: |
         python main.py
 
-  docker-build:
-    name: Docker Build
-    runs-on: ubuntu-latest
-    needs: build
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Create Dockerfile
-      run: |
-        cat > Dockerfile << 'EOF'
-        FROM python:3.10-slim
-        
-        WORKDIR /app
-        
-        COPY Requirements.txt .
-        RUN pip install --no-cache-dir -r Requirements.txt
-        
-        COPY . .
-        
-        CMD ["python", "main.py"]
-        EOF
-
-    - name: Build Docker image
-      run: |
-        docker build -t clinical-predictor:latest .
-
-    - name: Test Docker image
-      run: |
-        docker run --rm clinical-predictor:latest python --version
-
-    - name: Save Docker image
-      run: |
-        docker save clinical-predictor:latest | gzip > clinical-predictor-image.tar.gz
-
-    - name: Upload Docker image as artifact
-      uses: actions/upload-artifact@v3
-      with:
-        name: docker-image
-        path: clinical-predictor-image.tar.gz
-
   deploy-staging:
-    name: Deploy to Staging (Optional)
+    name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: [build, run-application, docker-build]
+    needs: [build, run-application]
     if: github.ref == 'refs/heads/develop'
 
     steps:
@@ -122,39 +77,20 @@ jobs:
         echo "Commit: ${{ github.sha }}"
         # Add your deployment steps here
         # Example: kubectl apply -f k8s/staging/
-        # Example: aws ecs update-service --cluster staging --service clinical-predictor
-
-  deploy-production:
-    name: Deploy to Production (Optional)
-    runs-on: ubuntu-latest
-    needs: [build, run-application, docker-build]
-    if: github.ref == 'refs/heads/main'
-
-    steps:
-    - name: Checkout code
-      uses: actions/checkout@v3
-
-    - name: Deploy notification
-      run: |
-        echo "🚀 Deploying to production environment..."
-        echo "Branch: ${{ github.ref }}"
-        echo "Commit: ${{ github.sha }}"
-        # Add your deployment steps here
-        # Example: kubectl apply -f k8s/production/
-        # Example: aws ecs update-service --cluster production --service clinical-predictor
+        # Example: scp -r . user@staging-server:/app/
 
   notify:
     name: Notification
     runs-on: ubuntu-latest
-    needs: [build, run-application, docker-build]
+    needs: [build, run-application]
     if: always()
 
     steps:
     - name: Check build results
       run: |
         if [ "${{ needs.build.result }}" == "success" ] && [ "${{ needs.run-application.result }}" == "success" ]; then
-          echo "✅ Build and deployment successful!"
+          echo "✅ Build and application run successful!"
         else
-          echo "❌ Build or deployment failed!"
+          echo "❌ Build or application run failed!"
           exit 1
         fi

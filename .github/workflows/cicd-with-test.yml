@@ -28,7 +28,7 @@ jobs:
       uses: actions/cache@v3
       with:
         path: ~/.cache/pip
-        key: ${{ runner.os }}-pip-${{ hashFiles('**/Requirements.txt', '**/requirements-test.txt') }}
+        key: ${{ runner.os }}-pip-${{ hashFiles('**/Requirements.txt', '**/Requirements-tests.txt') }}
         restore-keys: |
           ${{ runner.os }}-pip-
 
@@ -36,7 +36,7 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r Requirements.txt
-        pip install -r requirements-test.txt
+        pip install -r Requirements-tests.txt
 
     - name: Lint with flake8
       run: |
@@ -168,61 +168,30 @@ jobs:
       run: |
         python -m pip install --upgrade pip
         pip install -r Requirements.txt
-        pip install -r requirements-test.txt
+        pip install -r Requirements-tests.txt
 
     - name: Run main script
       run: |
         python main.py
 
-    - name: Test API endpoints (if applicable)
-      run: |
-        # Start the Flask API in background
-        # python app/api.py &
-        # API_PID=$!
-        # sleep 5
-        # 
-        # # Test health endpoint
-        # curl -f http://localhost:5000/health || exit 1
-        # 
-        # # Kill the API
-        # kill $API_PID
-        echo "API tests skipped - add when API is ready"
-      continue-on-error: true
-
-  docker-build:
-    name: Docker Build Test
+  deploy-staging:
+    name: Deploy to Staging
     runs-on: ubuntu-latest
-    needs: test
+    needs: [build, integration-test]
+    if: github.ref == 'refs/heads/develop'
 
     steps:
     - name: Checkout code
       uses: actions/checkout@v3
 
-    - name: Set up Docker Buildx
-      uses: docker/setup-buildx-action@v2
-
-    - name: Create Dockerfile
+    - name: Deploy notification
       run: |
-        cat > Dockerfile << 'EOF'
-        FROM python:3.10-slim
-        
-        WORKDIR /app
-        
-        COPY Requirements.txt .
-        RUN pip install --no-cache-dir -r Requirements.txt
-        
-        COPY . .
-        
-        CMD ["python", "main.py"]
-        EOF
-
-    - name: Build Docker image
-      run: |
-        docker build -t clinical-predictor:test .
-
-    - name: Test Docker image
-      run: |
-        docker run --rm clinical-predictor:test python --version
+        echo "🚀 Deploying to staging environment..."
+        echo "Branch: ${{ github.ref }}"
+        echo "Commit: ${{ github.sha }}"
+        # Add your deployment steps here
+        # Example: kubectl apply -f k8s/staging/
+        # Example: scp -r . user@staging-server:/app/
 
   notify:
     name: Notification
@@ -233,9 +202,9 @@ jobs:
     steps:
     - name: Check test results
       run: |
-        if [ "${{ needs.test.result }}" == "success" ]; then
-          echo "✅ Tests passed successfully!"
+        if [ "${{ needs.test.result }}" == "success" ] && [ "${{ needs.build.result }}" == "success" ]; then
+          echo "✅ Tests and build passed successfully!"
         else
-          echo "❌ Tests failed!"
+          echo "❌ Tests or build failed!"
           exit 1
         fi
